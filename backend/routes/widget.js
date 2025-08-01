@@ -12,6 +12,7 @@ const allowedDomainsMap = {
 router.get('/widget.js', async (req, res) => {
   const token = req.query.token;
   const referer = req.get('referer') || '';
+  const origin = req.headers.origin;
 
   if (!token) {
     return res.status(400).send('// Missing token');
@@ -24,7 +25,7 @@ router.get('/widget.js', async (req, res) => {
     return res.status(401).send('// Invalid or expired token');
   }
 
-  const allowedDomains = allowedDomainsMap[businessId] || [];
+  await isDomainAllowed(businessId, origin); 
   const isAllowed = allowedDomains.some(domain => referer.startsWith(domain));
 
   if (!isAllowed) {
