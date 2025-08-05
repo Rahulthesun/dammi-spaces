@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.52.1",
     "aws-sdk": "^2.1490.0",
     "formidable": "^3.5.1",
-    "next": "^15.4.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "graceful-fs": "^4.2.11",
+    "next": "14.0.0",
+    "react": "^18",
+    "react-dom": "^18",
     "sharp": "^0.32.0"
   },
   "devDependencies": {
