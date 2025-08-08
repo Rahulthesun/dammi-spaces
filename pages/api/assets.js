@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       }).promise()
       const assets = (data.Contents || []).map(obj => ({
         key: obj.Key,
-        url: `${process.env.R2_ENDPOINT}/${process.env.R2_BUCKET_NAME}/${obj.Key}`,
+        url: `${process.NEXT_PUBLIC_R2_PUBLIC_URL}/${obj.Key}`,
         size: obj.Size,
         lastModified: obj.LastModified,
       }))
