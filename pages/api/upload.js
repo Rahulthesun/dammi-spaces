@@ -2,6 +2,12 @@ import formidable from 'formidable'
 import AWS from 'aws-sdk'
 import fs from 'fs'
 import path from 'path'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
 // Disable default body parsing
 export const config = {
@@ -25,6 +31,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    
+    const token = req.headers.authorization?.split('Bearer ')[1]
+    if (!token) return res.status(401).json({ error: 'No token provided' })
+
+    const {
+      data: { user },
+      error: authError
+    } = await supabase.auth.getUser(token)
+
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' })
+
     // Parse the form data
     const form = formidable({
       maxFileSize: 100 * 1024 * 1024, // 100MB limit
@@ -88,6 +105,21 @@ export default async function handler(req, res) {
     }
 
     const uploadResult = await s3.upload(uploadParams).promise()
+
+    // Insert image metadata into Supabase
+    const { error } = await supabase.from('images').insert([
+      {
+        name: filename,
+        url: uploadResult.Location,
+        upload_date: new Date(),
+        user_id: user.id,
+      },
+    ])
+
+    if (error) {
+      console.error(' Failed to insert image metadata into Supabase:', error.message)
+    }
+
 
     // Clean up temporary file
     fs.unlinkSync(uploadPath)
