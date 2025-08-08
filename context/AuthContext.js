@@ -6,24 +6,45 @@ const AuthContext = createContext()
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    // Check active sessions on initial load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    return () =>{
-      if (subscription) subscription.unsubscribe()
+useEffect(() => {
+  const restoreSession = async () => {
+    try {
+      const storedSessionString = localStorage.getItem('session');
+      if (storedSessionString) {
+        const storedSession = JSON.parse(storedSessionString);
+        if (storedSession?.access_token && storedSession?.refresh_token) {
+          // Restore session into Supabase
+          const { data, error } = await supabase.auth.setSession({
+            access_token: storedSession.access_token,
+            refresh_token: storedSession.refresh_token,
+          });
+          
+          if (error) {
+            console.error('Error restoring session:', error);
+            // Clear invalid stored session
+            localStorage.removeItem('session');
+          }
+          // Note: Don't set user here, let onAuthStateChange handle it
+        }
       }
-  }, [])
+    } catch (error) {
+      console.error('Error parsing stored session:', error);
+      localStorage.removeItem('session');
+    }
+  };
+
+  restoreSession();
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    setUser(session?.user ?? null);
+    
+    setLoading(false);
+  });
+
+  return () => {
+    subscription?.unsubscribe();
+  };
+}, []);
 
   const value = {
     user,
