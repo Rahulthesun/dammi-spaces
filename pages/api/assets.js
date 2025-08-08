@@ -20,14 +20,14 @@ export default async function handler(req, res) {
       }).promise()
       const assets = (data.Contents || []).map(obj => ({
         key: obj.Key,
-        url: `${process.env.R2_ENDPOINT}/${process.env.R2_BUCKET_NAME}/${obj.Key}`,
+        url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${obj.Key}`,
         size: obj.Size,
         lastModified: obj.LastModified,
       }))
       const totalUsed = assets.reduce((sum, a) => sum + (a.size || 0), 0)
       const numFiles = assets.length
       res.status(200).json({
-        assets,
+        assets, 
         storage: {
           used: totalUsed,
           quota: R2_TOTAL_QUOTA,

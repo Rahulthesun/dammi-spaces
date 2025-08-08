@@ -111,7 +111,7 @@ export default function Dashboard() {
         body: formData,
         headers: {
           // Add auth header if needed
-          // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
+           'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
         }
       })
 
@@ -464,10 +464,10 @@ export default function Dashboard() {
                       aria-label="View asset"
                     >
                       {isImage ? (
-                        <img src={`https://pub-demo.r2.dev/${asset.key}`} alt="" className="rounded mb-2 object-cover h-40 w-full group-hover:opacity-80 transition" />
+                        <img src={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${asset.key}`} alt="" className="rounded mb-2 object-cover h-40 w-full group-hover:opacity-80 transition" />
                       ) : isVideo ? (
                         <div className="relative mb-2 h-40 w-full">
-                          <video src={`https://pub-demo.r2.dev/${asset.key}`} className="rounded object-cover h-40 w-full group-hover:opacity-80 transition" />
+                          <video src={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${asset.key}`} className="rounded object-cover h-40 w-full group-hover:opacity-80 transition" />
                           <div className="absolute inset-0 flex items-center justify-center">
                             <svg className="w-12 h-12 text-white opacity-80" fill="currentColor" viewBox="0 0 24 24">
                               <circle cx="12" cy="12" r="10" fill="black" fillOpacity="0.5" />
