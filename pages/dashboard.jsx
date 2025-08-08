@@ -111,7 +111,7 @@ export default function Dashboard() {
         body: formData,
         headers: {
           // Add auth header if needed
-          // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
+           'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
         }
       })
 

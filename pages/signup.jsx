@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { Eye, EyeOff, Mail, Lock, User, UserCheck, Shield, CheckCircle } from 'lucide-react';
 
 export default function SignupPage() {
+  const router = useRouter();
   const [step, setStep] = useState('signup'); // 'signup', 'confirmation', 'profile'
   const [formData, setFormData] = useState({
     email: '',
@@ -125,9 +127,9 @@ export default function SignupPage() {
       if (response.ok) {
         setMessage('Profile created successfully! Welcome aboard!');
         
-        // Simulate redirect to dashboard
+        // Redirect to dashboard
         setTimeout(() => {
-          alert('Account setup complete! In production, you would be redirected to dashboard.');
+          router.push('/dashboard');
         }, 1500);
       } else {
         setError(data.error || 'Failed to create profile');
@@ -385,7 +387,7 @@ export default function SignupPage() {
           <p className="text-sm text-gray-600">
             Already have an account?{' '}
             <button
-              onClick={() => window.location.href = '/login'}
+              onClick={() => router.push('/login')}
               className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors"
             >
               Sign in here
