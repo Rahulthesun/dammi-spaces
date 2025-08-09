@@ -1,4 +1,4 @@
-import { verifyWidgetToken } from '../../../utils/tokenUtils'
+import { verifyWidgetToken } from '../../../backend/utils/tokenUtils'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(

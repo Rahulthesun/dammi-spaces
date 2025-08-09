@@ -141,8 +141,7 @@ export default function Dashboard() {
       const res = await fetch(`/api/assets?key=${encodeURIComponent(key)}`, { 
         method: 'DELETE',
         headers: {
-          // Add auth header if needed
-          // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
         }
       })
       const data = await res.json()
@@ -176,8 +175,8 @@ export default function Dashboard() {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          // Add auth header if needed
-          // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
+          
+        'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
         },
         body: JSON.stringify({ oldKey, newKey }),
       })
@@ -215,8 +214,7 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/assets', {
         headers: {
-          // Add auth header if needed
-          // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
         }
       })
       const data = await res.json()

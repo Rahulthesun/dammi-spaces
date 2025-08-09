@@ -1,5 +1,6 @@
 // pages/api/login.js
 import { supabase } from '../../lib/supabaseClient'
+import { createProfile, getProfile } from './supabase_methods';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -64,8 +65,25 @@ export default async function handler(req, res) {
       type: 'email'
     });
 
+
+
     if (error) {
       return res.status(401).json({ error: 'Invalid OTP', details: error.message });
+    }
+
+    const profile = await getProfile(data.user.id)
+
+    if (!profile) {
+
+       const profileError = await createProfile(data.user.id)
+       if(!profileError) {
+        console.log("Successfully Created Profile")
+       } else {
+        console.error("Error :" , profileError.message)
+       }
+
+    } else {
+      console.log("Profile Exists")
     }
 
     return res.status(200).json({
@@ -73,6 +91,9 @@ export default async function handler(req, res) {
       session: data.session,
       user: data.user,
     });
+
+    
+
   }
 
   return res.status(400).json({ error: 'Invalid request. Specify step or provide password/otp.' });

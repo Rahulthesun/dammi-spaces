@@ -1,5 +1,6 @@
 // pages/api/signup.js
 import { supabase } from '../../lib/supabaseClient'
+import { createProfile } from './supabase_methods';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,6 +23,14 @@ export default async function handler(req, res) {
 
   if (!data.session) {
     console.log("Email confirmation required. No session created yet.");
+  }
+
+  const profileError = await createProfile(data.user.id)
+
+  if (!profileError) {
+    console.log("Successfully Created")
+  } else {
+    console.error("Error:" , profileError.message)
   }
 
   res.status(200).json({

@@ -32,15 +32,23 @@ export default async function handler(req, res) {
 
   try {
     
-    const token = req.headers.authorization?.split('Bearer')[1]
+    const token = req.headers.authorization?.split('Bearer')[1].trim() //Sometimes , a leading or trailing space gives a error 
     if (!token) return res.status(401).json({ error: 'No token provided' })
+    console.log(token)
 
     const {
       data: { user },
       error: authError
     } = await supabase.auth.getUser(token)
 
-    if (authError || !user) return res.status(401).json({ error: 'Invalid token' })
+    if (authError || !user){
+
+      console.log(authError)
+      console.log(user)
+
+      return res.status(401).json({ error: 'Invalid token' })
+    }
+      
 
     // Parse the form data
     const form = formidable({
@@ -110,9 +118,10 @@ export default async function handler(req, res) {
     const { error } = await supabase.from('images').insert([
       {
         name: filename,
-        url: uploadResult.Location,
+        url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${filename}`,
         upload_date: new Date(),
         user_id: user.id,
+        size: file.size / (1024 * 1024) // Stored as MB
       },
     ])
 
@@ -130,7 +139,7 @@ export default async function handler(req, res) {
       url: uploadResult.Location,
       filename: filename,
       size: file.size,
-      type: contentType,
+      type: contentType,  
     })
 
   } catch (error) {
