@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     const form = formidable({
       maxFileSize: 100 * 1024 * 1024, // 100MB limit
       keepExtensions: true,
-      uploadDir: process.env.TEMP || process.env.TMP || './tmp',
+      uploadDir: process.env.TEMP || process.env.TMP || '/tmp',
     })
 
     const [fields, files] = await new Promise((resolve, reject) => {
