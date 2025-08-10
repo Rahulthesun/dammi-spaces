@@ -1,24 +1,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { Eye, EyeOff, Mail, Lock, User, UserCheck, Shield, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Shield, CheckCircle, ArrowLeft } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
-  const [step, setStep] = useState('signup'); // 'signup', 'confirmation', 'profile'
+  const [step, setStep] = useState('create_account'); // 'create_account' or 'verify_token'
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     full_name: '',
-    role: 'user'
+    role: 'user',
+    token: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [userData, setUserData] = useState(null);
-  const [sessionData, setSessionData] = useState(null);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -54,7 +53,8 @@ export default function SignupPage() {
     return true;
   };
 
-  const handleSignup = async () => {
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
     if (!validateForm()) return;
     
     setLoading(true);
@@ -70,25 +70,16 @@ export default function SignupPage() {
           email: formData.email,
           password: formData.password,
           full_name: formData.full_name,
-          role: formData.role
+          role: formData.role,
+          step: 'create_account'
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setUserData(data.user);
-        setSessionData(data.session);
-        
-        if (!data.session) {
-          // Email confirmation required
-          setMessage(data.message);
-          setStep('confirmation');
-        } else {
-          // Direct signup success, move to profile creation
-          setMessage('Account created successfully!');
-          setStep('profile');
-        }
+        setMessage(data.message);
+        setStep('verify_token');
       } else {
         setError(data.error || 'Signup failed');
       }
@@ -99,40 +90,37 @@ export default function SignupPage() {
     }
   };
 
-  const handleCreateProfile = async () => {
-    if (!userData) {
-      setError('User data not found. Please try signing up again.');
-      return;
-    }
-
+  const handleVerifyToken = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch('/api/profile', {
+      const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: userData.id,
-          full_name: formData.full_name,
-          role: formData.role,
-          access_token: sessionData?.access_token || 'demo_token'
+          email: formData.email,
+          token: formData.token,
+          step: 'verify_token'
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('Profile created successfully! Welcome aboard!');
+        // Store session data if provided
+        if (data.session) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('session', JSON.stringify(data.session));
+        }
         
-        // Redirect to dashboard
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+        // Redirect to login or dashboard
+        router.push('/dashboard');
       } else {
-        setError(data.error || 'Failed to create profile');
+        setError(data.error || 'Verification failed');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -141,17 +129,42 @@ export default function SignupPage() {
     }
   };
 
-  const resendConfirmation = async () => {
+  const goBackToSignup = () => {
+    setStep('create_account');
+    setMessage('');
+    setError('');
+    setFormData({ ...formData, token: '' });
+  };
+
+  const resendToken = async () => {
     setLoading(true);
+    setError('');
+
     try {
-      // In a real app, you'd have an API endpoint to resend confirmation
-      // For now, we'll simulate it
-      setTimeout(() => {
-        setMessage('Confirmation email sent again! Please check your inbox.');
-        setLoading(false);
-      }, 1000);
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+          role: formData.role,
+          step: 'create_account'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('New verification code sent to your email!');
+      } else {
+        setError(data.error || 'Failed to resend verification code');
+      }
     } catch (err) {
-      setError('Failed to resend confirmation email');
+      setError('Network error. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -162,30 +175,29 @@ export default function SignupPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            {step === 'signup' && <User className="w-8 h-8 text-emerald-600" />}
-            {step === 'confirmation' && <Mail className="w-8 h-8 text-emerald-600" />}
-            {step === 'profile' && <UserCheck className="w-8 h-8 text-emerald-600" />}
+            {step === 'create_account' ? (
+              <User className="w-8 h-8 text-emerald-600" />
+            ) : (
+              <Mail className="w-8 h-8 text-emerald-600" />
+            )}
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {step === 'signup' && 'Create Account'}
-            {step === 'confirmation' && 'Check Your Email'}
-            {step === 'profile' && 'Complete Your Profile'}
+            {step === 'create_account' ? 'Create Account' : 'Verify Your Email'}
           </h1>
           <p className="text-gray-600 mt-2">
-            {step === 'signup' && 'Join us today and get started'}
-            {step === 'confirmation' && 'We sent you a confirmation link'}
-            {step === 'profile' && 'Set up your profile information'}
+            {step === 'create_account' 
+              ? 'Join us today and get started' 
+              : 'Enter the verification code from your email'
+            }
           </p>
         </div>
 
         {/* Progress Indicator */}
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${step === 'signup' ? 'bg-emerald-600' : 'bg-emerald-200'}`} />
-            <div className={`w-8 h-1 ${step !== 'signup' ? 'bg-emerald-200' : 'bg-gray-200'}`} />
-            <div className={`w-3 h-3 rounded-full ${step === 'confirmation' ? 'bg-emerald-600' : step === 'profile' ? 'bg-emerald-200' : 'bg-gray-200'}`} />
-            <div className={`w-8 h-1 ${step === 'profile' ? 'bg-emerald-200' : 'bg-gray-200'}`} />
-            <div className={`w-3 h-3 rounded-full ${step === 'profile' ? 'bg-emerald-600' : 'bg-gray-200'}`} />
+            <div className={`w-3 h-3 rounded-full ${step === 'create_account' ? 'bg-emerald-600' : 'bg-emerald-200'}`} />
+            <div className={`w-8 h-1 ${step === 'verify_token' ? 'bg-emerald-200' : 'bg-gray-200'}`} />
+            <div className={`w-3 h-3 rounded-full ${step === 'verify_token' ? 'bg-emerald-600' : 'bg-gray-200'}`} />
           </div>
         </div>
 
@@ -203,9 +215,9 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* Signup Step */}
-        {step === 'signup' && (
-          <div className="space-y-6">
+        {/* Create Account Step */}
+        {step === 'create_account' && (
+          <form onSubmit={handleCreateAccount} className="space-y-6">
             <div>
               <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name
@@ -219,7 +231,7 @@ export default function SignupPage() {
                   required
                   value={formData.full_name}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-black"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -238,7 +250,7 @@ export default function SignupPage() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-black"
                   placeholder="Enter your email"
                 />
               </div>
@@ -253,7 +265,7 @@ export default function SignupPage() {
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-black"
               >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
@@ -274,7 +286,7 @@ export default function SignupPage() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-black"
                   placeholder="Create a password"
                 />
                 <button
@@ -300,7 +312,7 @@ export default function SignupPage() {
                   required
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-black"
                   placeholder="Confirm your password"
                 />
                 <button
@@ -314,72 +326,76 @@ export default function SignupPage() {
             </div>
 
             <button
-              onClick={handleSignup}
+              type="submit"
               disabled={loading}
               className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
-          </div>
+          </form>
         )}
 
-        {/* Email Confirmation Step */}
-        {step === 'confirmation' && (
-          <div className="text-center space-y-6">
-            <div className="bg-emerald-50 p-6 rounded-lg">
-              <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
-              <p className="text-gray-700 mb-4">
-                We've sent a confirmation email to:
-              </p>
-              <p className="font-semibold text-gray-900 mb-4">{formData.email}</p>
-              <p className="text-sm text-gray-600">
-                Please click the link in the email to verify your account and complete the signup process.
-              </p>
+        {/* Verify Token Step */}
+        {step === 'verify_token' && (
+          <form onSubmit={handleVerifyToken} className="space-y-6">
+            <div className="text-center mb-6">
+              <div className="bg-emerald-50 p-6 rounded-lg">
+                <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
+                <p className="text-gray-700 mb-2">
+                  Verification code sent to:
+                </p>
+                <p className="font-semibold text-gray-900 mb-4">{formData.email}</p>
+                <p className="text-sm text-gray-600">
+                  Enter the 6-digit code from your email below
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <button
-                onClick={resendConfirmation}
-                disabled={loading}
-                className="w-full bg-emerald-100 text-emerald-700 py-3 px-4 rounded-lg font-medium hover:bg-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? 'Sending...' : 'Resend Confirmation Email'}
-              </button>
-              
-              <button
-                onClick={() => setStep('profile')}
-                className="w-full text-emerald-600 hover:text-emerald-800 font-medium transition-colors"
-              >
-                Skip for now (Demo)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Profile Creation Step */}
-        {step === 'profile' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <p className="text-gray-600 mb-6">
-                Let's create your profile to complete the setup
-              </p>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-900 mb-2">Account Details</h3>
-              <p className="text-sm text-gray-600">Email: {formData.email}</p>
-              <p className="text-sm text-gray-600">Name: {formData.full_name}</p>
-              <p className="text-sm text-gray-600">Role: {formData.role}</p>
+            <div>
+              <label htmlFor="token" className="block text-sm font-medium text-gray-700 mb-2">
+                Verification Code
+              </label>
+              <input
+                type="text"
+                id="token"
+                name="token"
+                required
+                value={formData.token}
+                onChange={handleInputChange}
+                maxLength="6"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors text-center text-lg font-mono tracking-wider text-black"
+                placeholder="000000"
+              />
             </div>
 
             <button
-              onClick={handleCreateProfile}
+              type="submit"
               disabled={loading}
               className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Creating Profile...' : 'Complete Setup'}
+              {loading ? 'Verifying...' : 'Verify Email'}
             </button>
-          </div>
+
+            <div className="flex items-center justify-between pt-4">
+              <button
+                type="button"
+                onClick={goBackToSignup}
+                className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </button>
+              
+              <button
+                type="button"
+                onClick={resendToken}
+                disabled={loading}
+                className="text-sm text-emerald-600 hover:text-emerald-800 disabled:opacity-50 transition-colors"
+              >
+                Resend Code
+              </button>
+            </div>
+          </form>
         )}
 
         {/* Footer */}

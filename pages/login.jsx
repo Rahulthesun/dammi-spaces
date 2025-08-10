@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { Eye, EyeOff, Mail, Lock, Shield, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Shield } from 'lucide-react';
 
 export default function LoginPage() {
-  const [step, setStep] = useState('password'); // 'password' or 'otp'
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    otp: ''
+    password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   
   const router = useRouter();
 
@@ -25,48 +22,7 @@ export default function LoginPage() {
     if (error) setError('');
   };
 
-  // Extracted password verification logic
-  const verifyPasswordAndSendOtp = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          step: 'verify_password'
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(data.message);
-        setStep('otp');
-        return true;
-      } else {
-        setError(data.error || 'Login failed');
-        return false;
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordStep = async (e) => {
-    e.preventDefault();
-    await verifyPasswordAndSendOtp();
-  };
-
-  const handleOtpStep = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -79,8 +35,7 @@ export default function LoginPage() {
         },
         body: JSON.stringify({
           email: formData.email,
-          otp: formData.otp,
-          step: 'verify_otp'
+          password: formData.password
         }),
       });
 
@@ -94,26 +49,12 @@ export default function LoginPage() {
         // Redirect to dashboard or home
         router.push('/dashboard');
       } else {
-        setError(data.error || 'OTP verification failed');
+        setError(data.error || 'Login failed');
       }
     } catch (err) {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const goBackToPassword = () => {
-    setStep('password');
-    setMessage('');
-    setError('');
-    setFormData({ ...formData, otp: '' });
-  };
-
-  const resendOtp = async () => {
-    const success = await verifyPasswordAndSendOtp();
-    if (success) {
-      setMessage('New OTP sent to your email');
     }
   };
 
@@ -125,15 +66,8 @@ export default function LoginPage() {
           <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-indigo-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {step === 'password' ? 'Welcome Back' : 'Enter Verification Code'}
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {step === 'password' 
-              ? 'Sign in to your account' 
-              : 'We sent a code to your email address'
-            }
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-gray-600 mt-2">Sign in to your account</p>
         </div>
 
         {/* Error Message */}
@@ -143,126 +77,61 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Success Message */}
-        {message && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
-            {message}
-          </div>
-        )}
-
-        {/* Password Step Form */}
-        {step === 'password' && (
-          <form onSubmit={handlePasswordStep} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black"
-                  placeholder="Enter your email"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Verifying...' : 'Continue'}
-            </button>
-          </form>
-        )}
-
-        {/* OTP Step Form */}
-        {step === 'otp' && (
-          <form onSubmit={handleOtpStep} className="space-y-6">
-            <div className="text-center mb-6">
-              <p className="text-sm text-gray-600">
-                Code sent to: <span className="font-medium">{formData.email}</span>
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
-                Verification Code
-              </label>
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
-                type="text"
-                id="otp"
-                name="otp"
+                type="email"
+                id="email"
+                name="email"
                 required
-                value={formData.otp}
+                value={formData.email}
                 onChange={handleInputChange}
-                maxLength="6"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-center text-lg font-mono tracking-wider text-black"
-                placeholder="000000"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black"
+                placeholder="Enter your email"
               />
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Verifying...' : 'Sign In'}
-            </button>
-
-            <div className="flex items-center justify-between pt-4">
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                required
+                value={formData.password}
+                onChange={handleInputChange}
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black"
+                placeholder="Enter your password"
+              />
               <button
                 type="button"
-                onClick={goBackToPassword}
-                className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back
-              </button>
-              
-              <button
-                type="button"
-                onClick={resendOtp}
-                disabled={loading}
-                className="text-sm text-indigo-600 hover:text-indigo-800 disabled:opacity-50 transition-colors"
-              >
-                Resend Code
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-          </form>
-        )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Signing In...' : 'Sign In'}
+          </button>
+        </form>
 
         {/* Footer */}
         <div className="mt-8 text-center">
