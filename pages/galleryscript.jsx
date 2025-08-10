@@ -1,6 +1,5 @@
-import { useState , useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { generateWidgetToken } from "../lib/tokenUtils";
 import { getUserFromToken } from "./api/supabase_methods";
 
 export default function EmbedButton({}) {
@@ -22,14 +21,28 @@ export default function EmbedButton({}) {
   }, []);
 
   const handleCopy = async () => {
-    const user = await getUserFromToken(token);
-    const {user_id} = await generateWidgetToken(user.id);
-    const embedCode = `<script src="https://dammi-spaces.vercel.app/api/widget/images?token=${user_id}"></script>\n<div id="dammi-image-gallery"></div>`;
-    navigator.clipboard.writeText(embedCode)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    try {
+      const user = await getUserFromToken(token);
+      
+      const response = await fetch('/api/generate-widget-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate token');
+      }
+      
+      const { token: widgetToken } = await response.json();
+      const embedCode = `<script src="https://dammi-spaces.vercel.app/api/widget/images?token=${widgetToken}"></script>\n<div id="dammi-image-gallery"></div>`;
+      
+      await navigator.clipboard.writeText(embedCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Error generating embed code:', error)
+    }
   };
 
   return (
