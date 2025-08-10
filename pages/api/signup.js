@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       email,
       password,
       options: {
-        data: { full_name, role }
+        data: { full_name}
         // No emailRedirectTo - we don't want clickable links
       }
     });

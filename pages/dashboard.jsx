@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   // Original DAM state
-  const [file, setFile] = useState(null)
+  const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
@@ -85,7 +85,7 @@ export default function Dashboard() {
     
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile && (droppedFile.type.startsWith('image/') || droppedFile.type.startsWith('video/'))) {
-      setFile(droppedFile)
+      setFiles([droppedFile])
       setMessage({ type: '', text: '' })
     } else {
       setMessage({ type: 'error', text: 'Please select an image or video file.' })
@@ -93,56 +93,70 @@ export default function Dashboard() {
   }
 
   const handleFileSelect = (e) => {
-    const selectedFile = e.target.files[0]
-    if (selectedFile && (selectedFile.type.startsWith('image/') || selectedFile.type.startsWith('video/'))) {
-      setFile(selectedFile)
-      setMessage({ type: '', text: '' })
-    } else {
-      setMessage({ type: 'error', text: 'Please select an image or video file.' })
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) {
+      setMessage({ type: 'error', text: 'No files selected.' });
+      return;
     }
-  }
+  
+    const validFiles = Array.from(selectedFiles).filter(file =>
+      file.type.startsWith('image/') || file.type.startsWith('video/')
+    );
+  
+    if (validFiles.length === 0) {
+      setMessage({ type: 'error', text: 'Please select image or video files only.' });
+      return;
+    }
+  
+    setFiles(validFiles);
+    setMessage({ type: '', text: '' });
+  };
+  
+  
 
   const handleUpload = async () => {
-    if (!file) {
-      setMessage({ type: 'error', text: 'Please select a file first.' })
-      return
+    if (!files || files.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one file.' });
+      return;
     }
-
-    setIsUploading(true)
-    setMessage({ type: '', text: '' })
-
-    const formData = new FormData()
-    formData.append('file', file)
-
+  
+    setIsUploading(true);
+    setMessage({ type: '', text: '' });
+  
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i]); // Note key 'files', your backend must handle multiple
+    }
+  
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
         headers: {
-          // Add auth header if needed
-           'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`,
+          // Do NOT set Content-Type header; browser sets it with boundary for FormData
         }
-      })
-
-      const result = await response.json()
-
+      });
+  
+      const result = await response.json();
+  
       if (response.ok) {
-        setMessage({ type: 'success', text: `File uploaded successfully! URL: ${result.url}` })
-        setFile(null)
+        setMessage({ type: 'success', text: `Uploaded ${files.length} files successfully!` });
+        setFiles(null);
         if (fileInputRef.current) {
-          fileInputRef.current.value = ''
+          fileInputRef.current.value = '';
         }
-        setLastUploaded(result.filename)
-        fetchAssets()
+        fetchAssets();
       } else {
-        setMessage({ type: 'error', text: result.error || 'Upload failed. Please try again.' })
+        setMessage({ type: 'error', text: result.error || 'Upload failed. Please try again.' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Network error. Please check your connection.' })
+      setMessage({ type: 'error', text: 'Network error. Please check your connection.' });
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
+  
 
   const handleDelete = async (key) => {
     if (!window.confirm('Delete this asset?')) return
@@ -570,6 +584,7 @@ export default function Dashboard() {
                 accept="image/*,video/*"
                 onChange={handleFileSelect}
                 className="hidden"
+                multiple
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -578,14 +593,13 @@ export default function Dashboard() {
                 Choose File
               </button>
             </div>
-            {file && (
-              <div className="absolute top-4 right-4 bg-purple-50 dark:bg-purple-900/40 px-4 py-2 rounded-lg shadow text-purple-800 dark:text-purple-200 flex items-center space-x-2">
-                <span>{file.name}</span>
-                <span className="text-xs text-gray-500">{formatFileSize(file.size)}</span>
+            {files && files.length > 0 && (
+              <div className="absolute top-4 right-4 bg-purple-50 dark:purple-900/40 px-4 py-2 rounded-lg shadow text-purple-800 dark:text-purple-200">
+                {files.length} file{files.length !== 1 ? 's' : ''} selected
                 <button
                   onClick={() => {
-                    setFile(null)
-                    if (fileInputRef.current) fileInputRef.current.value = ''
+                    setFiles([]);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                   className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
@@ -599,9 +613,9 @@ export default function Dashboard() {
           <div className="mt-6 max-w-4xl mx-auto ">
             <button
               onClick={handleUpload}
-              disabled={!file || isUploading}
+              disabled={!files || files.length === 0|| isUploading}
               className={`w-full py-4 px-8 rounded-xl font-bold text-lg transition-all duration-200 ${
-                !file || isUploading
+                !files || files.length === 0 || isUploading
                   ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5'
               }`}
