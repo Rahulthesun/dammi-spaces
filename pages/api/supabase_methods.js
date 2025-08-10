@@ -29,3 +29,22 @@ export async function createProfile(userId) {
     return null
     
 }
+
+//to get user from access_token
+export async function getUserFromToken(access_token) {
+    const {
+        data: { user },
+        error: authError
+      } = await supabase.auth.getUser(access_token);
+  
+    if (authError || !user){
+        console.log(authError)
+        console.log(user)
+        throw authError
+    }
+
+    return user
+
+    
+
+}

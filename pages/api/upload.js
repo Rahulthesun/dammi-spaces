@@ -121,7 +121,7 @@ export default async function handler(req, res) {
         url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${filename}`,
         upload_date: new Date(),
         user_id: user.id,
-        size: file.size / (1024 * 1024) // Stored as MB
+        size: file.size // Stored as MB
       },
     ])
 

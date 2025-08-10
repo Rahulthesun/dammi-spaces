@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { LogOut, User, Settings } from 'lucide-react'
+import EmbedButton from './galleryscript'
 
 export default function Dashboard() {
   // Auth state
@@ -25,6 +26,14 @@ export default function Dashboard() {
 
   // Check authentication on component mount
   useEffect(() => {
+    if (message.text) {
+      const timer = setTimeout(() => {
+        setMessage({ text: '', type: '' });
+      }, 10000); // 10 seconds
+
+      return () => clearTimeout(timer);
+    }
+    
     const checkAuth = () => {
       try {
         // In a real app, you'd validate the session with your backend
@@ -218,7 +227,7 @@ export default function Dashboard() {
         }
       })
       const data = await res.json()
-      setAssets(data.assets || [])
+      setAssets(data.userAssets || [])
       setStorage(data.storage || { used: 0, quota: 0, numFiles: 0 })
       setR2(data.r2 || { bucket: '', endpoint: '' })
     } catch (e) {
@@ -254,6 +263,8 @@ export default function Dashboard() {
   }
   const handleThemeToggle = () => setDarkMode((prev) => !prev)
 
+  
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
       if (darkMode) {
@@ -262,6 +273,7 @@ export default function Dashboard() {
         document.documentElement.classList.remove('dark')
       }
     }
+
   }, [darkMode])
 
   // Show loading while checking auth
@@ -315,7 +327,7 @@ export default function Dashboard() {
             </svg>
             Refresh
           </button>
-          <button onClick={handleUploadNav} className="flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-300 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition">
+          <button onClick={handleBrowseNav} className="flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-300 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition">
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
             </svg>
@@ -327,12 +339,7 @@ export default function Dashboard() {
             </svg>
             Assets
           </button>
-          <button onClick={handleBrowseNav} className="flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-300 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition">
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v4a1 1 0 001 1h3m10 0h3a1 1 0 001-1V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
-            </svg>
-            Browse
-          </button>
+          <EmbedButton/>
           <button onClick={handleThemeToggle} className="flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-300 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition">
             {darkMode ? (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -368,6 +375,37 @@ export default function Dashboard() {
       </nav>
       
       <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        {message.text && (
+          <div
+            className={`w-1/2 fixed top-10 left-1/2 -translate-x-1/2 z-50 p-4 rounded-lg shadow-lg ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              {message.type === 'success' ? (
+                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+              <p
+                className={`text-sm font-medium ${
+                  message.type === 'success'
+                    ? 'text-green-800 dark:text-green-200'
+                    : 'text-red-800 dark:text-red-200'
+                }`}
+              >
+                {message.text}
+              </p>
+            </div>
+          </div>
+          )}
+
         <div className="container mx-auto px-4 py-8">
           {/* Welcome Message */}
           <div className="max-w-4xl mx-auto mb-8">
@@ -425,7 +463,7 @@ export default function Dashboard() {
                     />
                   ) : null}
 
-                  <div className="mt-2 text-gray-700 dark:text-gray-200 text-sm break-all">
+                  <div className="mt-2 text-gray-900 dark:text-gray-200 text-sm break-all">
                     {previewAsset.key?.split('/').pop()}
                   </div>
                 </div>
@@ -479,19 +517,23 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1">
                       {editKey === asset.key ? (
-                        <div className="flex items-center space-x-2 bg-black rounded p-1">
+                        <div className="flex flex-col items-left rounded p-1">
                           <input
-                            className="border-none outline-none bg-black text-white px-2 py-1 flex-1 rounded"
+                            className="bg-white border-2 text-black px-2 py-1 flex-1 rounded"
                             value={newName}
                             onChange={e => setNewName(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleRename(asset.key) }}
                           />
-                          <button onClick={() => handleRename(asset.key)} className="text-white font-semibold">Save</button>
-                          <button onClick={() => setEditKey(null)} className="text-gray-400">Cancel</button>
+                          <div className='flex flex-row justify-between mt-3'> 
+                          <button onClick={() => handleRename(asset.key)} className="py-1 rounded-md text-white bg-black font-semibold px-4">Save</button>
+                          <button onClick={() => setEditKey(null)} className="py-1 rounded-md text-white bg-red-700 px-4">Cancel</button>
+                          </div>
+
+                          
                         </div>
                       ) : (
                         <div className="flex items-center justify-between">
-                          <span className="truncate" title={asset.key}>{asset.key.split('/').pop()}</span>
+                          <span className="truncate  text-gray-800 dark:text-gray-200" title={asset.key}>{asset.key.split('/').pop()}</span>
                           <div className="flex items-center space-x-2">
                             <button onClick={() => startEdit(asset.key)} className="text-purple-600 hover:underline">Edit</button>
                             <button onClick={() => handleDelete(asset.key)} className="text-red-600 hover:underline">Delete</button>
@@ -507,7 +549,7 @@ export default function Dashboard() {
           </div>
 
           {/* Upload Area */}
-          <div id="upload-pink-box" className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-10 mb-8 border-2 border-dashed border-purple-300 dark:border-purple-700 hover:border-purple-500 dark:hover:border-purple-400 transition-all duration-200 flex flex-col items-center justify-center relative group" style={{ minHeight: '220px' }}
+          <div id="upload-pink-box" className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-10 mb-8 border-2 border-dashed border-purple-300 dark:border-purple-700 hover:border-purple-500 dark:hover:border-purple-400 transition-all duration-200 flex flex-col items-center justify-center relative group" style={{ minHeight: '220px' }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -554,7 +596,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-          <div className="mt-6">
+          <div className="mt-6 max-w-4xl mx-auto ">
             <button
               onClick={handleUpload}
               disabled={!file || isUploading}
@@ -577,36 +619,6 @@ export default function Dashboard() {
               )}
             </button>
           </div>
-          {message.text && (
-            <div
-              className={`p-4 rounded-lg mt-6 ${
-                message.type === 'success'
-                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                {message.type === 'success' ? (
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                )}
-                <p
-                  className={`text-sm font-medium ${
-                    message.type === 'success'
-                      ? 'text-green-800 dark:text-green-200'
-                      : 'text-red-800 dark:text-red-200'
-                  }`}
-                >
-                  {message.text}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </main>
     </>
