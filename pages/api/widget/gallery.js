@@ -1,28 +1,44 @@
-import { verifyWidgetToken } from '../../../lib/tokenUtils'
-import { createClient } from '@supabase/supabase-js'
+import { verifyWidgetToken } from '../../../lib/tokenUtils';
+import { createClient } from '@supabase/supabase-js';
+import { isDomainAllowed } from '../../../utils/isDomainAllowed.js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+);
 
 export default async function handler(req, res) {
-  const { token } = req.query
-  if (!token) return res.status(400).send('Missing token')
+  const { token } = req.query;
+  if (!token) return res.status(400).send('Missing token');
 
-  const userId = verifyWidgetToken(token)
-  if (!userId) return res.status(403).send('Invalid token')
+  const userId = verifyWidgetToken(token);
+  if (!userId) return res.status(403).send('Invalid token');
 
+  // Extract origin/referer
+  const referer = req.headers.referer || '';
+  let origin;
+  try {
+    origin = new URL(referer).origin;
+  } catch {
+    return res.status(400).send('// Invalid referer header');
+  }
+
+  // Domain allow check
+  const allowed = await isDomainAllowed(userId, origin);
+  if (!allowed) {
+    return res.status(403).send('// Domain not allowed for this business');
+  }
+
+  // Fetch images (requires RLS setup to allow userId access)
   const { data, error } = await supabase
     .from('images')
     .select('url, name')
-    .eq('user_id', userId) // will work only if RLS allows it
-    .order('upload_date', { ascending: false })
+    .eq('user_id', userId)
+    .order('upload_date', { ascending: false });
 
-  if (error) return res.status(500).send('Error fetching images')
+  if (error) return res.status(500).send('Error fetching images');
 
-  res.setHeader('Content-Type', 'application/javascript')
-
+  res.setHeader('Content-Type', 'application/javascript');
   res.send(`
     (function() {
       const images = ${JSON.stringify(data)};
@@ -51,5 +67,5 @@ export default async function handler(req, res) {
         container.appendChild(wrapper);
       });
     })();
-  `)
+  `);
 }
