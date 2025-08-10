@@ -35,7 +35,7 @@ export default function EmbedButton({}) {
       }
       
       const { token: widgetToken } = await response.json();
-      const embedCode = `<script src="https://dammi-spaces.vercel.app/api/widget/images?token=${widgetToken}"></script>\n<div id="dammi-image-gallery"></div>`;
+      const embedCode = `<script src="https://dammi-spaces.vercel.app/api/widget/gallery?token=${widgetToken}"></script>\n<div id="dammi-image-gallery"></div>`;
       
       await navigator.clipboard.writeText(embedCode);
       setCopied(true);
