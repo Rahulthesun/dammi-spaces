@@ -1,6 +1,6 @@
 import { verifyWidgetToken } from '../../../lib/tokenUtils';
 import { createClient } from '@supabase/supabase-js';
-import { isDomainAllowed } from '../../../utils/isDomainAllowed.js';
+import { isDomainAllowed } from '../../../lib/isDomainAllowed.js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -36,11 +36,17 @@ export default async function handler(req, res) {
     .eq('user_id', userId)
     .order('upload_date', { ascending: false });
 
+  console.log(data)
+
   if (error) return res.status(500).send('Error fetching images');
 
   res.setHeader('Content-Type', 'application/javascript');
   res.send(`
-    (function() {
+    window.dammiImages = ${JSON.stringify(data)};
+  `);
+}
+
+/*(function() {
       const images = ${JSON.stringify(data)};
       const container = document.getElementById('dammi-image-gallery');
       if (!container) return;
@@ -66,6 +72,4 @@ export default async function handler(req, res) {
         wrapper.appendChild(image);
         container.appendChild(wrapper);
       });
-    })();
-  `);
-}
+    })();*/

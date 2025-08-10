@@ -99,10 +99,19 @@ export default async function handler(req, res) {
     const { oldKey, newKey } = req.body
     if (!oldKey || !newKey) return res.status(400).json({ error: 'Missing oldKey or newKey' })
     
-    const {error:updateError} =  await supabase.from('images').update({name: newKey}).eq('name', oldKey);
+    const {error:updateError} =  await supabase
+
+    .from('images')
+    .update({
+      name: newKey,
+      url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${newKey}`
+    })
+    .eq('name', oldKey);
+
     if (updateError) {
       console.error("Error Updating: " , updateError)
     }
+    
     console.log("Updated from supabase")
     
     try {
