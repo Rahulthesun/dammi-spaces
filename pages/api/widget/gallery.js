@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   // Fetch images (requires RLS setup to allow userId access)
   const { data, error } = await supabase
     .from('images')
-    .select('url, name')
+    .select('url, name , thumbnail')
     .eq('user_id', userId)
     .order('upload_date', { ascending: false });
 
