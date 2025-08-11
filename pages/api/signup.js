@@ -25,15 +25,14 @@ export default async function handler(req, res) {
       password,
       options: {
         data: { full_name}
-        // No emailRedirectTo - we don't want clickable links
+        
       }
     });
 
     if (signupError) {
       return res.status(400).json({ error: signupError.message });
     }
-
-    // If session exists, sign out immediately (similar to your login API)
+    
     if (signupData.session) {
       await supabase.auth.signOut();
     }
