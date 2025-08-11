@@ -471,6 +471,7 @@ export default function Dashboard() {
                   ) : previewAsset.type === 'video' ? (
                     <video
                       src={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${previewAsset.key}`}
+                      poster = {`${previewAsset.thumbnail}`}
                       controls
                       autoPlay
                       className="max-w-2xl max-h-[80vh] w-full h-auto block mx-auto rounded shadow-lg bg-black"
@@ -517,7 +518,9 @@ export default function Dashboard() {
                         <img src={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${asset.key}`} alt="" className="rounded mb-2 object-cover h-40 w-full group-hover:opacity-80 transition" />
                       ) : isVideo ? (
                         <div className="relative mb-2 h-40 w-full">
-                          <video src={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${asset.key}`} className="rounded object-cover h-40 w-full group-hover:opacity-80 transition" />
+                          <video src={`${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${asset.key}`} 
+                          poster={`${asset.thumbnail}`}
+                          className="rounded object-cover h-40 w-full group-hover:opacity-80 transition" />
                           <div className="absolute inset-0 flex items-center justify-center">
                             <svg className="w-12 h-12 text-white opacity-80" fill="currentColor" viewBox="0 0 24 24">
                               <circle cx="12" cy="12" r="10" fill="black" fillOpacity="0.5" />

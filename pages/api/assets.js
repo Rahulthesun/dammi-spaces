@@ -52,6 +52,7 @@ export default async function handler(req, res) {
       const userAssets = (supabaseData || []).map(img => ({
         key: img.name, // or whatever your column is called
         url: img.url, // adjust based on your storage setup
+        thumbnail : img.thumbnail,
         size: img.size,
         lastModified: img.upload_date // adjust to your column name
       }));

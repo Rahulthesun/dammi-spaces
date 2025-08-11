@@ -3,6 +3,10 @@ import AWS from 'aws-sdk'
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
+import ffmpeg from 'fluent-ffmpeg'
+import ffmpegPath from '@ffmpeg-installer/ffmpeg'
+
+ffmpeg.setFfmpegPath(ffmpegPath.path)
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -37,15 +41,13 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid token' })
     }
 
-    // Parse the form data first
     const form = formidable({
       maxFileSize: 100 * 1024 * 1024,
       keepExtensions: true,
       uploadDir: process.env.TEMP || process.env.TMP || '/tmp',
-      multiples: true // Allow multiple files
+      multiples: true
     })
 
-    // Parse the form
     const [fields, files] = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) reject(err)
@@ -53,9 +55,8 @@ export default async function handler(req, res) {
       })
     })
 
-    // Get uploaded files from parsed form
     let uploadedFiles = []
-    if (files.files) { // 'files' is the field name from your frontend
+    if (files.files) {
       if (Array.isArray(files.files)) {
         uploadedFiles = files.files.filter(f => f && f.mimetype)
       } else if (files.files.mimetype) {
@@ -92,12 +93,13 @@ export default async function handler(req, res) {
       const filename = `${timestamp}-${randomString}${extension}`
       const uploadPath = file.filepath
 
-      // Insert metadata
+      // Insert metadata in Supabase
       const { data: insertedData, error: insertError } = await supabase
         .from('images')
         .insert([{
           name: filename,
           url: null,
+          thumbnail: null, // new field
           upload_date: new Date(),
           user_id: user.id,
           size: file.size,
@@ -111,6 +113,7 @@ export default async function handler(req, res) {
       }
 
       try {
+        // Upload main file
         const fileStream = fs.createReadStream(uploadPath)
         await s3.upload({
           Bucket: process.env.R2_BUCKET_NAME,
@@ -122,10 +125,44 @@ export default async function handler(req, res) {
 
         const fileUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${filename}`
 
-        // Update metadata with URL
+        // If it's a video, create a thumbnail
+        let thumbnailUrl = null
+        if (isVideo) {
+          const thumbnailFilename = `${timestamp}-${randomString}-thumb.jpg`
+          const thumbnailPath = path.join(
+            process.env.TEMP || process.env.TMP || '/tmp',
+            thumbnailFilename
+          )
+
+          await new Promise((resolve, reject) => {
+            ffmpeg(uploadPath)
+              .screenshots({
+                timestamps: ['1'], // capture at 1 second
+                filename: thumbnailFilename,
+                folder: path.dirname(thumbnailPath)
+              })
+              .on('end', resolve)
+              .on('error', reject)
+          })
+
+          // Upload thumbnail to R2
+          const thumbStream = fs.createReadStream(thumbnailPath)
+          await s3.upload({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: thumbnailFilename,
+            Body: thumbStream,
+            ContentType: 'image/jpeg',
+            ACL: 'public-read',
+          }).promise()
+
+          thumbnailUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${thumbnailFilename}`
+          fs.unlinkSync(thumbnailPath)
+        }
+
+        // Update Supabase with file URL and optional thumbnail URL
         const { error: updateError } = await supabase
           .from('images')
-          .update({ url: fileUrl })
+          .update({ url: fileUrl, thumbnail: thumbnailUrl })
           .eq('id', insertedData.id)
 
         if (updateError) {
@@ -137,6 +174,7 @@ export default async function handler(req, res) {
         results.push({
           success: true,
           url: fileUrl,
+          thumbnail: thumbnailUrl,
           filename,
           size: file.size,
           type: file.mimetype,
