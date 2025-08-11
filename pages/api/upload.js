@@ -5,6 +5,9 @@ import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import ffmpeg from 'fluent-ffmpeg'
 import ffmpegPath from '@ffmpeg-installer/ffmpeg'
+import ffprobePath from '@ffprobe-installer/ffprobe'
+ffmpeg.setFfprobePath(ffprobePath.path)
+
 
 ffmpeg.setFfmpegPath(ffmpegPath.path)
 
