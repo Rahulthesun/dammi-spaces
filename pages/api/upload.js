@@ -4,12 +4,17 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import ffmpeg from 'fluent-ffmpeg'
-import ffmpegPath from '@ffmpeg-installer/ffmpeg'
-import ffprobePath from '@ffprobe-installer/ffprobe'
-ffmpeg.setFfprobePath(ffprobePath.path)
+//import ffmpegPath from '@ffmpeg-installer/ffmpeg'
+//import ffprobePath from '@ffprobe-installer/ffprobe'
+import { path as ffmpegPath } from 'ffmpeg-static'
+import { path as ffprobePath } from 'ffprobe-static'
+//ffmpeg.setFfprobePath(ffprobePath.path)
 
 
-ffmpeg.setFfmpegPath(ffmpegPath.path)
+//ffmpeg.setFfmpegPath(ffmpegPath.path)
+
+ffmpeg.setFfprobePath(ffprobePath)
+ffmpeg.setFfmpegPath(ffmpegPath)
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
