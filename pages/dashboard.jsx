@@ -118,53 +118,75 @@ export default function Dashboard() {
  
 
   const handleUpload = async () => {
-    if (!files || files.length === 0) {
-      setMessage({ type: 'error', text: 'Please select at least one file.' });
-      return;
-    }
+    if (!files || files.length === 0) return;
   
     setIsUploading(true);
     setMessage({ type: '', text: '' });
   
-    const formData = new FormData();
+    const results = [];
   
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      formData.append('files', file); // main file
+    for (let file of files) {
+      try {
+        // --- Generate thumbnail if video ---
+        let thumbnailFile = null;
+        if (file.type.startsWith('video/')) {
+          thumbnailFile = await generateThumbnail(file);
+        }
   
-      // If it's a video, generate a thumbnail
-      if (file.type.startsWith('video/')) {
-        const thumbnail = await generateThumbnail(file);
-        formData.append('thumbnails', thumbnail, `thumb-${file.name}.jpg`);
+        // --- Get signed URL for video ---
+        const videoName = `${Date.now()}-${file.name}`;
+        const { url: videoUrl, publicUrl: videoPublicUrl } = await fetch('/api/get-signed-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: videoName, contentType: file.type }),
+        }).then(r => r.json());
+  
+        await fetch(videoUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        });
+  
+        let thumbnailPublicUrl = null;
+        if (thumbnailFile) {
+          const thumbName = `thumb-${Date.now()}-${file.name}.jpg`;
+          const { url: thumbUrl, publicUrl } = await fetch('/api/get-signed-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: thumbName, contentType: thumbnailFile.type }),
+          }).then(r => r.json());
+  
+          await fetch(thumbUrl, { method: 'PUT', body: thumbnailFile, headers: { 'Content-Type': thumbnailFile.type } });
+          thumbnailPublicUrl = publicUrl;
+        }
+  
+        // --- Save metadata in Supabase ---
+        const session = JSON.parse(localStorage.getItem('session'));
+        await fetch('/api/save-metadata', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            name: videoName,
+            url: videoPublicUrl,
+            thumbnail: thumbnailPublicUrl,
+            size: file.size,
+            type: file.type,
+          }),
+        });
+  
+        results.push({ file: file.name, success: true });
+  
+      } catch (err) {
+        console.error(err);
+        results.push({ file: file.name, success: false, error: err.message });
       }
     }
   
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`,
-        }
-      });
-  
-      const result = await response.json();
-  
-      if (response.ok) {
-        setMessage({ type: 'success', text: `Uploaded ${files.length} files successfully!` });
-        setFiles(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        fetchAssets();
-      } else {
-        setMessage({ type: 'error', text: result.error || 'Upload failed. Please try again.' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Network error. Please check your connection.' });
-    } finally {
-      setIsUploading(false);
-    }
+    setMessage({ type: 'success', text: `Uploaded ${results.length} files` });
+    setIsUploading(false);
   };
   
   
