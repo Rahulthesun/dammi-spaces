@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { LogOut, User, Settings } from 'lucide-react'
 import EmbedButton from './galleryscript'
-import { generateThumbnail } from './generateThumbnail';
+import { generateThumbnail } from '../lib/generateThumbnail';
 
 export default function Dashboard() {
   // Auth state
