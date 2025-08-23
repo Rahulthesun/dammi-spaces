@@ -3,18 +3,16 @@ import AWS from 'aws-sdk'
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
-import ffmpeg from 'fluent-ffmpeg'
-//import ffmpegPath from '@ffmpeg-installer/ffmpeg'
-//import ffprobePath from '@ffprobe-installer/ffprobe'
-import { path as ffmpegPath } from 'ffmpeg-static'
-import { path as ffprobePath } from 'ffprobe-static'
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';       // direct default export (string path)
+import ffprobe from 'ffprobe-static'; 
 //ffmpeg.setFfprobePath(ffprobePath.path)
 
 
 //ffmpeg.setFfmpegPath(ffmpegPath.path)
 
-ffmpeg.setFfprobePath(ffprobePath)
-ffmpeg.setFfmpegPath(ffmpegPath)
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobe.path);
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -176,7 +174,7 @@ export default async function handler(req, res) {
         if (updateError) {
           await supabase.from('images').delete().eq('id', insertedData.id)
           fs.unlinkSync(uploadPath)
-          return res.status(500).json({ error: 'Failed to update metadata' })
+          return res.status(500).json({ error: 'Failed to update metadata In Supabase' })
         }
 
         results.push({
@@ -190,7 +188,8 @@ export default async function handler(req, res) {
       } catch (uploadError) {
         await supabase.from('images').delete().eq('id', insertedData.id)
         fs.unlinkSync(uploadPath)
-        return res.status(500).json({ error: 'File upload failed' })
+        console.log(uploadError)
+        return res.status(500).json({ error: 'File upload failed During Cloudflare Upload' })
       }
 
       fs.unlinkSync(uploadPath)

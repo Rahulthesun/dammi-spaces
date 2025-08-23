@@ -15,7 +15,7 @@ router.get('/widget.js', async (req, res) => {
   const origin = req.headers.origin;
 
   if (!token) {
-    return res.status(400).send('// Missing token');
+    return res.status(400).send('Missing token');
   }
 
   const businessId = verifyWidgetToken(token);
