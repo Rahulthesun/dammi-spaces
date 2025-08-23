@@ -7,6 +7,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+export const config = {
+  runtime: 'edge',
+};
+
 export default async function handler(req, res) {
   const { token } = req.query;
   if (!token) return res.status(400).send('Missing token');

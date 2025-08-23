@@ -1,5 +1,9 @@
 import { supabase } from "../../lib/supabaseClient"
 
+export const config = {
+    runtime: 'edge',
+};
+
 //Function to GetProfile from Database given a User ID
 export async function getProfile(userId) {
     const { data, error } = await supabase

@@ -9,6 +9,10 @@ const s3 = new AWS.S3({
   s3ForcePathStyle: true,
 })
 
+export const config = {
+  runtime: 'edge',
+};
+
 // Set a custom quota in bytes (e.g., 10 GB)
 const R2_TOTAL_QUOTA = 10 * 1024 * 1024 * 1024 // 10 GB
 

@@ -1,5 +1,9 @@
 import { generateWidgetToken } from "../../lib/tokenUtils";
 
+export const config = {
+  runtime: 'edge',
+};
+
 export default function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });

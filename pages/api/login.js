@@ -2,6 +2,10 @@
 import { supabase } from '../../lib/supabaseClient'
 import { createProfile, getProfile } from './supabase_methods';
 
+export const config = {
+  runtime: 'edge',
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
