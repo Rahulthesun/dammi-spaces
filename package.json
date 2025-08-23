@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
     "@supabase/supabase-js": "^2.52.1",
     "aws-sdk": "^2.1490.0",
     "dotenv": "^17.2.1",

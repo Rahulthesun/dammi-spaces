@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { LogOut, User, Settings } from 'lucide-react'
 import EmbedButton from './galleryscript'
+import { generateThumbnail } from './generateThumbnail';
 
 export default function Dashboard() {
   // Auth state
@@ -114,6 +115,8 @@ export default function Dashboard() {
   
   
 
+ 
+
   const handleUpload = async () => {
     if (!files || files.length === 0) {
       setMessage({ type: 'error', text: 'Please select at least one file.' });
@@ -124,8 +127,16 @@ export default function Dashboard() {
     setMessage({ type: '', text: '' });
   
     const formData = new FormData();
+  
     for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]); // Note key 'files', your backend must handle multiple
+      const file = files[i];
+      formData.append('files', file); // main file
+  
+      // If it's a video, generate a thumbnail
+      if (file.type.startsWith('video/')) {
+        const thumbnail = await generateThumbnail(file);
+        formData.append('thumbnails', thumbnail, `thumb-${file.name}.jpg`);
+      }
     }
   
     try {
@@ -134,7 +145,6 @@ export default function Dashboard() {
         body: formData,
         headers: {
           'Authorization': `Bearer ${JSON.parse(localStorage.getItem('session')).access_token}`,
-          // Do NOT set Content-Type header; browser sets it with boundary for FormData
         }
       });
   
@@ -156,6 +166,7 @@ export default function Dashboard() {
       setIsUploading(false);
     }
   };
+  
   
 
   const handleDelete = async (key) => {

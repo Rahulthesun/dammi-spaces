@@ -1,182 +1,148 @@
-import formidable from 'formidable'
-import AWS from 'aws-sdk'
-import fs from 'fs'
-import path from 'path'
-import { createClient } from '@supabase/supabase-js'
-import ffmpeg from 'fluent-ffmpeg'
-//import ffmpegPath from '@ffmpeg-installer/ffmpeg'
-//import ffprobePath from '@ffprobe-installer/ffprobe'
-import { path as ffmpegPath } from 'ffmpeg-static'
-import { path as ffprobePath } from 'ffprobe-static'
-//ffmpeg.setFfprobePath(ffprobePath.path)
+import formidable from 'formidable';
+import AWS from 'aws-sdk';
+import fs from 'fs';
+import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-
-//ffmpeg.setFfmpegPath(ffmpegPath.path)
-
-ffmpeg.setFfprobePath(ffprobePath)
-ffmpeg.setFfmpegPath(ffmpegPath)
-
+// Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+);
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
+// R2 (S3-compatible)
 const s3 = new AWS.S3({
   endpoint: process.env.R2_ENDPOINT,
   accessKeyId: process.env.R2_ACCESS_KEY,
   secretAccessKey: process.env.R2_SECRET_KEY,
   region: 'auto',
   s3ForcePathStyle: true,
-})
+});
+
+export const config = {
+  api: { bodyParser: false },
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const token = req.headers.authorization?.split('Bearer')[1]?.trim()
-    if (!token) return res.status(401).json({ error: 'No token provided' })
+    // --- Authentication ---
+    const token = req.headers.authorization?.split('Bearer')[1]?.trim();
+    if (!token) return res.status(401).json({ error: 'No token provided' });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid token' })
-    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
 
+    // --- Parse upload ---
     const form = formidable({
       maxFileSize: 100 * 1024 * 1024,
       keepExtensions: true,
       uploadDir: process.env.TEMP || process.env.TMP || '/tmp',
-      multiples: true
-    })
+      multiples: true,
+    });
 
     const [fields, files] = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
-        if (err) reject(err)
-        resolve([fields, files])
-      })
-    })
+        if (err) reject(err);
+        resolve([fields, files]);
+      });
+    });
 
-    let uploadedFiles = []
-    if (files.files) {
-      if (Array.isArray(files.files)) {
-        uploadedFiles = files.files.filter(f => f && f.mimetype)
-      } else if (files.files.mimetype) {
-        uploadedFiles = [files.files]
-      }
+    // --- Handle files and optional thumbnails ---
+    const uploadedFiles = Array.isArray(files.files) ? files.files : [files.files];
+    const uploadedThumbnails = files.thumbnails
+      ? (Array.isArray(files.thumbnails) ? files.thumbnails : [files.thumbnails])
+      : [];
+
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      return res.status(400).json({ error: 'No valid files uploaded' });
     }
 
-    if (uploadedFiles.length === 0) {
-      return res.status(400).json({ error: 'No valid files uploaded' })
-    }
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
-    const allowedImageTypes = [
-      'image/jpeg', 'image/jpg', 'image/png', 
-      'image/gif', 'image/webp'
-    ]
-    const allowedVideoTypes = [
-      'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'
-    ]
+    const results = [];
 
-    const results = []
-
-    for (const file of uploadedFiles) {
-      const isImage = allowedImageTypes.includes(file.mimetype)
-      const isVideo = allowedVideoTypes.includes(file.mimetype)
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const file = uploadedFiles[i];
+      const isImage = allowedImageTypes.includes(file.mimetype);
+      const isVideo = allowedVideoTypes.includes(file.mimetype);
 
       if (!isImage && !isVideo) {
-        fs.unlinkSync(file.filepath)
-        return res.status(400).json({ error: 'Invalid file type' })
+        fs.unlinkSync(file.filepath);
+        return res.status(400).json({ error: 'Invalid file type' });
       }
 
-      const timestamp = Date.now()
-      const randomString = Math.random().toString(36).substring(2, 15)
-      const extension = path.extname(file.originalFilename)
-      const filename = `${timestamp}-${randomString}${extension}`
-      const uploadPath = file.filepath
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const extension = path.extname(file.originalFilename);
+      const filename = `${timestamp}-${randomString}${extension}`;
+      const uploadPath = file.filepath;
 
-      // Insert metadata in Supabase
+      // Insert metadata in Supabase (empty URLs first)
       const { data: insertedData, error: insertError } = await supabase
         .from('images')
         .insert([{
           name: filename,
           url: null,
-          thumbnail: null, // new field
+          thumbnail: null,
           upload_date: new Date(),
           user_id: user.id,
           size: file.size,
         }])
         .select()
-        .single()
+        .single();
 
       if (insertError || !insertedData) {
-        fs.unlinkSync(uploadPath)
-        return res.status(500).json({ error: 'Failed to save metadata' })
+        fs.unlinkSync(uploadPath);
+        return res.status(500).json({ error: 'Failed to save metadata' });
       }
 
       try {
-        // Upload main file
-        const fileStream = fs.createReadStream(uploadPath)
+        // --- Upload original file to R2 ---
+        const fileStream = fs.createReadStream(uploadPath);
         await s3.upload({
           Bucket: process.env.R2_BUCKET_NAME,
           Key: filename,
           Body: fileStream,
           ContentType: file.mimetype,
           ACL: 'public-read',
-        }).promise()
+        }).promise();
 
-        const fileUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${filename}`
+        const fileUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${filename}`;
 
-        // If it's a video, create a thumbnail
-        let thumbnailUrl = null
-        if (isVideo) {
-          const thumbnailFilename = `${timestamp}-${randomString}-thumb.jpg`
-          const thumbnailPath = path.join(
-            process.env.TEMP || process.env.TMP || '/tmp',
-            thumbnailFilename
-          )
+        // --- Upload thumbnail if present ---
+        let thumbnailUrl = null;
+        const thumbnailFile = uploadedThumbnails[i];
+        if (thumbnailFile) {
+          const thumbStream = fs.createReadStream(thumbnailFile.filepath);
+          const thumbKey = `thumb-${timestamp}-${randomString}.jpg`;
 
-          await new Promise((resolve, reject) => {
-            ffmpeg(uploadPath)
-              .screenshots({
-                timestamps: ['1'], // capture at 1 second
-                filename: thumbnailFilename,
-                folder: path.dirname(thumbnailPath)
-              })
-              .on('end', resolve)
-              .on('error', reject)
-          })
-
-          // Upload thumbnail to R2
-          const thumbStream = fs.createReadStream(thumbnailPath)
           await s3.upload({
             Bucket: process.env.R2_BUCKET_NAME,
-            Key: thumbnailFilename,
+            Key: thumbKey,
             Body: thumbStream,
-            ContentType: 'image/jpeg',
+            ContentType: thumbnailFile.mimetype,
             ACL: 'public-read',
-          }).promise()
+          }).promise();
 
-          thumbnailUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${thumbnailFilename}`
-          fs.unlinkSync(thumbnailPath)
+          thumbnailUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${thumbKey}`;
+          fs.unlinkSync(thumbnailFile.filepath);
         }
 
-        // Update Supabase with file URL and optional thumbnail URL
+        // --- Update Supabase ---
         const { error: updateError } = await supabase
           .from('images')
           .update({ url: fileUrl, thumbnail: thumbnailUrl })
-          .eq('id', insertedData.id)
+          .eq('id', insertedData.id);
 
         if (updateError) {
-          await supabase.from('images').delete().eq('id', insertedData.id)
-          fs.unlinkSync(uploadPath)
-          return res.status(500).json({ error: 'Failed to update metadata' })
+          await supabase.from('images').delete().eq('id', insertedData.id);
+          fs.unlinkSync(uploadPath);
+          return res.status(500).json({ error: 'Failed to update metadata in Supabase' });
         }
 
         results.push({
@@ -186,22 +152,25 @@ export default async function handler(req, res) {
           filename,
           size: file.size,
           type: file.mimetype,
-        })
+        });
+
       } catch (uploadError) {
-        await supabase.from('images').delete().eq('id', insertedData.id)
-        fs.unlinkSync(uploadPath)
-        return res.status(500).json({ error: 'File upload failed' })
+        await supabase.from('images').delete().eq('id', insertedData.id);
+        fs.unlinkSync(uploadPath);
+        console.error(uploadError);
+        return res.status(500).json({ error: 'File upload failed during R2 upload' });
       }
 
-      fs.unlinkSync(uploadPath)
+      fs.unlinkSync(uploadPath); // cleanup temp file
     }
 
-    res.status(200).json(results)
+    res.status(200).json(results);
+
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('Upload error:', error);
     res.status(500).json({
       error: 'Upload failed',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    })
+    });
   }
 }
