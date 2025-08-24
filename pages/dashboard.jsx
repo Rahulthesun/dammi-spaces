@@ -129,7 +129,7 @@ export default function Dashboard() {
     }
   
     try {
-      const response = await fetch(`${process.env.UPLOAD_SERVER_URL}/api/upload`, {
+      const response = await fetch(`https://dammi-server-wild-sea-4789.fly.dev/api/upload`, {
         method: 'POST',
         body: formData,
         headers: {
