@@ -7,7 +7,7 @@ import ffmpeg from 'fluent-ffmpeg'
 import ffmpegPath from 'ffmpeg-static'
 import ffprobePath from 'ffprobe-static'
 
-export const runtime = 'edge';
+
 
 ffmpeg.setFfprobePath(ffprobePath)
 ffmpeg.setFfmpegPath(ffmpegPath)

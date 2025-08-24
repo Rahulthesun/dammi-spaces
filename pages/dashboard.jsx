@@ -129,7 +129,7 @@ export default function Dashboard() {
     }
   
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch(`${process.env.UPLOAD_SERVER_URL}/api/upload`, {
         method: 'POST',
         body: formData,
         headers: {

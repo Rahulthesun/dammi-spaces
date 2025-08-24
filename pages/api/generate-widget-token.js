@@ -1,8 +1,5 @@
 import { generateWidgetToken } from "../../lib/tokenUtils";
 
-export const config = {
-  runtime: 'edge',
-};
 
 export default function handler(req, res) {
   if (req.method !== "POST") {
